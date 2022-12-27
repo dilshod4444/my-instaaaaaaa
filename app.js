@@ -11,7 +11,7 @@ const port = process.env.PORT || 5000;
 connect();
 
 app.use(cors({
-    origin: "*s",
+    origin: "https://my-insta-haydarbek.netlify.app",
     credentials: true
 }))
 app.use(express.json());

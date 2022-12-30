@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const postSchema = mongoose.Schema({
+const postSchema = new mongoose.Schema({
     title: {
         type: String,
         required: true,
@@ -27,8 +27,7 @@ const postSchema = mongoose.Schema({
     comments: [
         {
             creator: {
-                type: mongoose.Types.ObjectId,
-                ref: "User",
+                type: "String",
             },
             message: {
                 type: String,

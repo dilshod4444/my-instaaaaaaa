@@ -1,6 +1,8 @@
 const router = require("express").Router();
 const { ObjectId } = require("mongoose");
 const Post = require("../modules/post");
+const User = require("../modules/user");
+const jwt = require("jsonwebtoken");
 
 router.get("/", async (req, res) => {
     try {
@@ -58,7 +60,8 @@ router.get("/user-posts/:id", async (req, res) => {
 
 router.get("/my-following-posts", async (req, res) => {
     try {
-        const following = req.user.following;
+        const { following } = await User.findById(req.user._id);
+
         const posts = await Post.find({
             creator: { $in: following },
         });
@@ -73,22 +76,23 @@ router.get("/my-following-posts", async (req, res) => {
 
 router.post("/add-comment", async (req, res) => {
     try {
-        const { postID, comment } = req.body;
+        const { postID, message } = req.body;
+        console.log(postID);
         const post = await Post.findById(postID);
         if (!post) {
             res.status(404).json({
                 message: "Post not found",
                 postID,
-                comment,
+                message,
             });
         } else {
-            post.comments.push({ message: comment, creator: req.user.firstName });
+            post.comments.push({ message, creator: req.user.firstName });
             await post.save();
 
             res.status(200).json({
                 message: "Successfully added comment",
                 postID,
-                comment,
+                message,
             });
         }
     } catch (error) {
@@ -96,10 +100,22 @@ router.post("/add-comment", async (req, res) => {
     }
 });
 
+router.post("/search", (req, res) => {
+    let pattern = new RegExp("^" + req.body.query);
+    User.find({ firstName: { $regex: pattern } })
+        .select("_id firstName lastName")
+        .then((users) => {
+            res.status(200).json({ users });
+        })
+        .catch((error) => {
+            return res.json({ error });
+        });
+});
+
 router.post("/like", async (req, res) => {
     try {
         const { postID } = req.body;
-        const post = await Post.findById(ObjectId(postID));
+        const post = await Post.findById(postID);
         if (!post)
             return res.status(404).json({
                 message: "Post not found",
@@ -114,6 +130,44 @@ router.post("/like", async (req, res) => {
         res.status(200).json({
             message: "Successfully liked or disliked post",
             post,
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+router.get("/refresh", async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        return res.status(200).json({ user });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+router.post("/follow", async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const user = await User.findById(userId);
+        const user_self = await User.findById(req.user._id);
+        if (!user)
+            return res.status(404).json({
+                message: "User not found",
+                userId,
+            });
+
+        if (user.followers.includes(req.user._id)) {
+            user.followers.splice(user.followers.indexOf(req.user._id));
+            user_self.following.splice(user_self.following.indexOf(user._id));
+        } else {
+            user.followers.push(req.user._id);
+            user_self.following.push(user._id);
+        }
+        await user.save();
+        await user_self.save();
+        res.status(200).json({
+            message: "Successfully followed or unfollowed post",
+            user: user_self,
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

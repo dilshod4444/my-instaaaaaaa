@@ -13,7 +13,7 @@ connect();
 
 app.use(
     cors({
-        origin: "https://my-insta-haydarbek.netlify.app",
+        origin: "https://my-insta-dilshodjon.netlify.app",
         credentials: true,
     })
 );
